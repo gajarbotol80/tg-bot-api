@@ -1,0 +1,11 @@
+{
+  "name": "telegram-api-proxy",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "form-data": "^4.0.0",
+    "multer": "^1.4.5"
+  }
+}
