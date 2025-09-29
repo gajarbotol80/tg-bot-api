@@ -7,27 +7,41 @@ const path = require("path");
 // Setup multer for file uploads, storing them temporarily in the /tmp/ directory.
 const upload = multer({ dest: "/tmp/" });
 
-// Note: The original code had a 'module.exports = upload.any()' line here, which was being
-// overwritten by the async function export below. This handler assumes the server
-// environment (like Vercel or Netlify) automatically parses multipart/form-data bodies
-// and populates `req.files` in a multer-compatible format.
+// Note: This handler assumes the server environment (like Vercel or Netlify) 
+// automatically parses multipart/form-data bodies and populates `req.files`.
 
 module.exports = async (req, res) => {
-  // ## CORS Headers ##
-  // These headers are added to every response to allow cross-origin requests.
-  // This is essential for allowing web applications from any domain to access this API.
-  res.setHeader("Access-Control-Allow-Origin", "*");
+  // ## CORS Headers (Maximally Permissive) ##
+  // This configuration is set to be as open as possible to prevent any CORS blocking.
+  // It allows requests from ANY origin, with credentials, and a wide range of methods and headers.
+  // WARNING: A highly permissive CORS policy like this should be used with caution
+  // and typically only in development or specific trusted environments.
+
+  // Dynamically reflect the request's origin. This is necessary to allow credentials 
+  // ('Access-Control-Allow-Credentials: true') from any source, as the browser
+  // does not permit the wildcard '*' for origins when credentials are included.
+  const origin = req.headers.origin;
+  res.setHeader("Access-Control-Allow-Origin", origin || "*");
+  
+  // Allow credentials like cookies, authorization headers, etc., to be sent.
   res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+
+  // Allow all common and some less common HTTP methods to be used.
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, DELETE, OPTIONS, PATCH, HEAD"
+  );
+  
+  // Allow a very broad set of headers to be sent in the request to prevent blocking.
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization, Cache-Control, Pragma, X-CSRF-Token, X-Auth-Token"
   );
 
   // ## Preflight Request Handling ##
-  // Browsers send an 'OPTIONS' request before complex requests (like POST with JSON)
-  // to check if the server allows it. We handle it here by sending back a success
-  // status, indicating that the actual request can proceed.
+  // Browsers send an 'OPTIONS' request before complex requests (e.g., POST with JSON)
+  // to check if the server will allow the actual request. We handle it here by sending back
+  // a success status (204 No Content), indicating that the actual request can proceed.
   if (req.method === "OPTIONS") {
     return res.status(204).end();
   }
@@ -91,7 +105,7 @@ module.exports = async (req, res) => {
         headers: form.getHeaders(),
       });
       
-      // **Suggestion**: Clean up the temporary files after they are sent to prevent
+      // Clean up the temporary files after they are sent to prevent
       // the server from running out of storage space.
       req.files.forEach((file) => {
         fs.unlink(file.path, (err) => {
@@ -124,7 +138,7 @@ module.exports = async (req, res) => {
     return res.status(error?.response?.status || 500).json({
       ok: false,
       error_message: "An internal server error occurred.",
-      details: error?.response?.data || error.message,
+      details: error?.response?.data || { message: error.message },
     });
   }
 };
